@@ -211,25 +211,32 @@ with col_left:
     key_mode = st.selectbox("Key Mode", ["3-key (24 bytes / 168-bit)", "2-key (16 bytes / 112-bit)"])
     block_mode = st.selectbox("Block Cipher Mode", ["CBC", "ECB"])
 
-    # Key input — use a separate internal state var to avoid widget conflict
-    if st.button("⟳  Generate Random Key"):
-        key_len = 24 if "3-key" in key_mode else 16
-        st.session_state["_gen_key"] = os.urandom(key_len).hex()
+    # Key input — on_click callbacks run BEFORE widgets render, so session state
+    # is already updated when the text_input reads st.session_state["key_in"]
+    key_len = 24 if "3-key" in key_mode else 16
+
+    def _gen_key_cb():
+        st.session_state["key_in"] = os.urandom(key_len).hex()
+
+    def _gen_iv_cb():
+        st.session_state["iv_in"] = os.urandom(8).hex()
+
+    if "key_in" not in st.session_state:
+        st.session_state["key_in"] = ""
+    if "iv_in" not in st.session_state:
+        st.session_state["iv_in"] = ""
 
     key_placeholder = "48 hex chars (24 bytes)" if "3-key" in key_mode else "32 hex chars (16 bytes)"
-    default_key = st.session_state.get("_gen_key", "")
     st.markdown("**Hex Key**")
-    key_input = st.text_input("", value=default_key, placeholder=key_placeholder,
+    key_input = st.text_input("", placeholder=key_placeholder,
                                label_visibility="collapsed", key="key_in")
+    st.button("⟳  Generate Random Key", on_click=_gen_key_cb)
 
     if block_mode == "CBC":
-        if st.button("⟳  Generate Random IV"):
-            st.session_state["_gen_iv"] = os.urandom(8).hex()
-
-        default_iv = st.session_state.get("_gen_iv", "")
         st.markdown("**IV (Initialization Vector)**")
-        iv_input = st.text_input("", value=default_iv, placeholder="16 hex chars (8 bytes) — blank = 00…00",
+        iv_input = st.text_input("", placeholder="16 hex chars (8 bytes) — blank = 00…00",
                                   label_visibility="collapsed", key="iv_in")
+        st.button("⟳  Generate Random IV", on_click=_gen_iv_cb)
     else:
         iv_input = ""
 
